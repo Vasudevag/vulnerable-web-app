@@ -1,25 +1,40 @@
-name: Trivy Scan
+name: Trivy Full Scan
 
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
-  scan:
+  security-scan:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
+    permissions:
+      contents: read
+      security-events: write
 
-      - name: Run Trivy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 🔹 Install dependencies (IMPORTANT for Node.js scanning)
+      - name: Install dependencies
+        run: npm install
+
+      # 🔹 Run Trivy scan (code + deps + secrets + IaC)
+      - name: Run Trivy scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: '.'
+          scanners: 'vuln,secret,misconfig'
           format: 'sarif'
           output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
 
-      - name: Upload to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+      # 🔹 Upload results to GitHub Security tab
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
